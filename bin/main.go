@@ -14,10 +14,11 @@ func main() {
 	e := routtp.NewNode("", nil)
 	e.AddRoute("/evo/rvsl", fn)
 	e.AddRoute("/evo/rvsl/", fn)
-	e.AddRoute("/evo/rvsl/ecdef", fn)
 	e.AddRoute("/evo/rvsl/ecd", fn)
-	e.AddRoute("/evo/rvsl/ecd/:do/a", fn)
-	e.AddRoute("/evo/rvsl/ecd/domain", fn)
+	e.AddRoute("/evo/rvsl/ecdef", fn)
+	e.AddRoute("/evo/rvsl/ecd/:a", fn)
+	e.AddRoute("/evo/rvsl/ecd/:a/", fn)
+	e.AddRoute("/evo/rvsl/ecd/:a/fgsd", fn)
 	e.AddRoute("/evo/rvsl/ecd/domain/*", fn)
 
 	routtp.PrintNode(e)
@@ -26,5 +27,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	ioutil.WriteFile("node.json", bs, 0644)
+	err = ioutil.WriteFile("node.json", bs, 0644)
+	if err != nil {
+		panic(err)
+	}
 }
