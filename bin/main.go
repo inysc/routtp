@@ -1,34 +1,38 @@
 package main
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"net/http"
+	"runtime"
+	"runtime/debug"
 
+	"github.com/gin-gonic/gin"
 	"github.com/inysc/routtp/routtp"
 )
 
-func fn(w http.ResponseWriter, r *http.Request) {}
+func fn(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%s %s<%d>\n", r.Method, r.RequestURI, runtime.Goid())
+	fmt.Printf("%s\n", debug.Stack())
+	ctx := r.Context().(*routtp.Context)
+	for _, v := range ctx.Param {
+		fmt.Printf("key<%s>, value<%s>\n", v.Key, v.Val)
+	}
+	println("\n")
+}
 
 func main() {
-	e := routtp.NewNode("", nil)
-	e.AddRoute("/evo/rvsl", fn)
-	e.AddRoute("/evo/rvsl/", fn)
-	e.AddRoute("/evo/rvsl/ecd", fn)
-	e.AddRoute("/evo/rvsl/ecdef", fn)
-	e.AddRoute("/evo/rvsl/ecd/:a", fn)
-	e.AddRoute("/evo/rvsl/ecd/:a/", fn)
-	e.AddRoute("/evo/rvsl/ecd/:a/fgsd", fn)
-	e.AddRoute("/evo/rvsl/ecd/domain/*", fn)
+	gin.SetMode(gin.ReleaseMode)
 
-	routtp.PrintNode(e)
+	router := routtp.New()
+	router.GET("/evo/rvsl", fn)
+	router.GET("/evo/rvsl/", fn)
+	router.GET("/evo/rvsl/ecd", fn)
+	router.GET("/evo/rvsl/ecdef", fn)
+	router.GET("/evo/rvsl/ecd/:a", fn)
+	router.GET("/evo/rvsl/ecd/:a/", fn)
+	router.GET("/evo/rvsl/ecd/:a/fgsd", fn)
+	router.GET("/evo/rvsl/ecd/domain/*", fn)
 
-	bs, err := json.MarshalIndent(e, "", "    ")
-	if err != nil {
-		panic(err)
-	}
-	err = ioutil.WriteFile("node.json", bs, 0644)
-	if err != nil {
-		panic(err)
-	}
+	println("start :8080")
+	http.ListenAndServe(":8080", router)
 }

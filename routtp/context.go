@@ -3,20 +3,38 @@ package routtp
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 )
 
-type Param struct {
-	Key string
-	Val string
+var ctxpool sync.Pool
+
+func init() {
+	ctxpool = sync.Pool{
+		New: func() any {
+			return &Context{
+				Request:  nil,
+				Response: nil,
+				Param:    make([]Pair[string, string], 0, 4),
+				Cancel:   func() {},
+				Fns:      make(HandlersChain, 0, 4),
+			}
+		},
+	}
+}
+
+type Pair[K, V any] struct {
+	Key K
+	Val V
 }
 
 type Context struct {
 	Request  *http.Request
 	Response http.ResponseWriter
-	Param    []Param
+	Param    []Pair[string, string]
 	Cancel   context.CancelFunc
 	Fns      HandlersChain
+	idx      int
 }
 
 var _ context.Context = &Context{}
@@ -50,9 +68,10 @@ func (ctx *Context) Clone() (ctxClone *Context) {
 	ctxClone = &Context{
 		Request:  ctx.Request,
 		Response: ctx.Response,
-		Param:    make([]Param, 0, len(ctx.Param)),
+		Param:    make([]Pair[string, string], 0, len(ctx.Param)),
 		Cancel:   func() {},
 		Fns:      make(HandlersChain, 0, len(ctx.Fns)),
+		idx:      ctx.idx,
 	}
 
 	copy(ctxClone.Param, ctx.Param)
@@ -66,4 +85,51 @@ func (ctx *Context) Clean() {
 	ctx.Param = ctx.Param[:0]
 	ctx.Cancel = func() {}
 	ctx.Fns = ctx.Fns[:0]
+	ctx.idx = 0
+}
+
+func (ctx *Context) Prefix(path, uri string) (idx int) {
+	j := 0
+	for i := 0; i < len(path) && j < len(uri); i++ {
+		switch path[i] {
+		case ':':
+			if uri[i] == '/' {
+				return -1
+			}
+			ii := i + 1
+			jj := j
+			for i+1 < len(path) && path[i+1] != '/' {
+				i++
+			}
+			for j+1 < len(uri) && uri[j+1] != '/' {
+				j++
+			}
+			ctx.Param = append(ctx.Param, Pair[string, string]{
+				Key: path[ii : i+1],
+				Val: uri[jj : j+1],
+			})
+		case '*':
+			ctx.Param = append(ctx.Param, Pair[string, string]{
+				Key: path[i+1:],
+				Val: uri[j:],
+			})
+		case uri[j]:
+		default:
+			return -1
+		}
+		j++
+	}
+	return
+}
+
+func (ctx *Context) Next() {
+	ctx.idx++
+	for ctx.idx < len(ctx.Fns) {
+		ctx.Fns[ctx.idx](ctx.Response, ctx.Request)
+		ctx.idx++
+	}
+}
+
+func (ctx *Context) Abort() {
+	ctx.idx = len(ctx.Fns)
 }

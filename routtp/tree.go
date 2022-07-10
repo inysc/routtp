@@ -2,7 +2,6 @@ package routtp
 
 import (
 	"fmt"
-	"strings"
 )
 
 type nodeType uint8
@@ -46,7 +45,7 @@ func NewNode(path string, handlers HandlersChain) *Node {
 	}
 }
 
-func (n *Node) AddRoute(path string, handlers ...HandlerFunc) {
+func (n *Node) AddRoute(isRoute bool, path string, handlers ...HandlerFunc) {
 	if n.Path == "" {
 		n.Path = path
 		n.Handlers = handlers
@@ -78,13 +77,13 @@ func (n *Node) AddRoute(path string, handlers ...HandlerFunc) {
 		return
 	}
 
-	n.insChild(path[idx:], "", handlers) // i == len(n.Path)
+	n.insChild(isRoute, path[idx:], "", handlers) // i == len(n.Path)
 }
 
-func (n *Node) insChild(path string, fullPath string, handlers HandlersChain) {
+func (n *Node) insChild(isRoute bool, path string, fullPath string, handlers HandlersChain) {
 	for _, v := range n.Children {
 		if v.Path[0] == path[0] {
-			v.AddRoute(path, handlers...)
+			v.AddRoute(isRoute, path, handlers...)
 			return
 		}
 	}
@@ -108,19 +107,24 @@ func (n *Node) appendChild(newNode *Node) {
 	}
 }
 
-func (n *Node) Get(ctx *Context) {
+func (n *Node) Get(ctx *Context) bool {
+	if n == nil {
+		return false
+	}
+
 	uri := ctx.Request.RequestURI
-	if !strings.HasPrefix(uri, n.Path) {
-		panic("404 Not Found")
+	idx := ctx.Prefix(n.Path, uri)
+	if idx == -1 {
+		return false
 	}
 	ctx.Fns = append(ctx.Fns, n.Handlers...)
-	for _, v := range n.Children {
-		if v.Path[0] == uri[0] {
-			v.Get(ctx)
-			goto then
+	uri = uri[idx:]
+	if len(uri) > 0 {
+		for _, v := range n.Children {
+			if v.Path[0] == uri[0] {
+				return v.Get(ctx)
+			}
 		}
 	}
-	panic("404 Not Found")
-	// 后续处理
-then:
+	return true
 }
