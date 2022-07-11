@@ -8,7 +8,7 @@ func New() *Router {
 			w.WriteHeader(404)
 			w.Write([]byte("404 Not Found"))
 		},
-		Method: []Pair[string, *Node]{},
+		Method: make([]Pair[string, *Node], 0, 10),
 	}
 }
 
@@ -66,9 +66,11 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.Clean()
 		ctxpool.Put(ctx)
 	}()
+
 	ctx.Request = r
 	ctx.Response = w
 	if !root.Get(ctx) {
+		r = r.WithContext(ctx)
 		router.NotFound(w, r)
 	}
 	r = r.WithContext(ctx)

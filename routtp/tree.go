@@ -8,15 +8,12 @@ type nodeType uint8
 
 const (
 	// 普通的中间节点
-	NodeNormal nodeType = 1 << iota
+	nodeNormal nodeType = 1 << iota
 	// 叶子节点
+	//
 	// 这里的叶子不是将它是树的叶子
 	// 而是说，它是某个路由的结尾
-	NodeLeaf
-	// 包含通配符节点
-	NodeWild
-	// 包含全匹配节点
-	NodeAllin
+	nodeLeaf
 )
 
 type Node struct {
@@ -27,16 +24,7 @@ type Node struct {
 	// FullPath string
 }
 
-func NewNode(path string, handlers HandlersChain) *Node {
-	var typ nodeType
-	for i := 0; i < len(path); i++ {
-		switch path[i] {
-		case ':':
-			typ = NodeWild
-		case '*':
-			typ = NodeAllin
-		}
-	}
+func NewNode(typ nodeType, path string, handlers HandlersChain) *Node {
 	return &Node{
 		Path:     path,
 		Type:     typ,
@@ -48,6 +36,7 @@ func NewNode(path string, handlers HandlersChain) *Node {
 func (n *Node) AddRoute(isRoute bool, path string, handlers ...HandlerFunc) {
 	if n.Path == "" {
 		n.Path = path
+		n.Type = nodeLeaf
 		n.Handlers = handlers
 		return
 	}
@@ -57,22 +46,30 @@ func (n *Node) AddRoute(isRoute bool, path string, handlers ...HandlerFunc) {
 		for i := idx - 1; i >= 0 && n.Path[i] != '/'; i-- {
 			assert(n.Path[i] == '*', "") // all in 节点后面不可以有子节点
 			if n.Path[i] == ':' {
-				assert(n.Path[idx] != '/', fmt.Sprintf("n.Path<%s> path<%s> idx<%d> i<%d>", n.Path, path, idx, i)) // 同一个路由节只能有一个通配节点
+				// 同一个路由节只能有一个通配节点
+				assert(
+					n.Path[idx] != '/',
+					fmt.Sprintf("n.Path<%s> path<%s> idx<%d> i<%d>", n.Path, path, idx, i),
+				)
 				if idx < len(path) {
 					assert(path[idx] != '/', "") // 同一个路由节只能有一个通配节点
 				}
 			}
 		}
 
-		oldNode := NewNode(n.Path[idx:], n.Handlers)
+		oldNode := NewNode(n.Type, n.Path[idx:], n.Handlers)
 		oldNode.Children = n.Children
 
+		n.Type = nodeNormal
 		n.Path = n.Path[:idx]
 		n.Handlers = []HandlerFunc{}
 		n.Children = []*Node{oldNode}
 		if idx < len(path) {
-			newNode := NewNode(path[idx:], handlers)
+			newNode := NewNode(nodeLeaf, path[idx:], handlers)
 			n.Children = append(n.Children, newNode)
+		} else {
+			n.Type = nodeLeaf
+			n.Handlers = handlers
 		}
 		return
 	}
@@ -87,7 +84,7 @@ func (n *Node) insChild(isRoute bool, path string, fullPath string, handlers Han
 			return
 		}
 	}
-	n.appendChild(NewNode(path, handlers))
+	n.appendChild(NewNode(nodeLeaf, path, handlers))
 }
 
 func (n *Node) appendChild(newNode *Node) {
@@ -125,6 +122,7 @@ func (n *Node) Get(ctx *Context) bool {
 				return v.Get(ctx)
 			}
 		}
+		return false
 	}
-	return true
+	return n.Type&nodeLeaf == 0
 }

@@ -30,9 +30,11 @@ func main() {
 	router.GET("/evo/rvsl/ecdef", fn)
 	router.GET("/evo/rvsl/ecd/:a", fn)
 	router.GET("/evo/rvsl/ecd/:a/", fn)
-	router.GET("/evo/rvsl/ecd/:a/fgsd", fn)
+	router.GET("/evo/rvsl/ecd/:a/fgd", fn)
 	router.GET("/evo/rvsl/ecd/domain/*", fn)
 
+	routtp.PrintNode(router.Method[0].Val)
+
 	println("start :8080")
-	http.ListenAndServe(":8080", router)
+	// http.ListenAndServe(":8080", router)
 }

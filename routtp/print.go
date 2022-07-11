@@ -2,6 +2,7 @@ package routtp
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -19,7 +20,12 @@ func genNode(graph *cgraph.Graph, v *Node) *cgraph.Node {
 	if err != nil {
 		panic(err)
 	}
-	childNode.SetLabel(v.Path)
+
+	label := v.Path
+	if v.Type&nodeLeaf == 0 {
+		label += fmt.Sprintf("<%c>", rune(0x1F653))
+	}
+	childNode.SetLabel(label)
 	return childNode
 }
 
@@ -40,7 +46,11 @@ func PrintNode(n *Node) {
 	if err != nil {
 		panic(err)
 	}
-	pNode.SetLabel(n.Path)
+	label := n.Path
+	if n.Type&nodeLeaf == 0 {
+		label += fmt.Sprintf("<%c>", rune(0x1F653))
+	}
+	pNode.SetLabel(label)
 
 	var printNode func(root *cgraph.Node, node *Node)
 
@@ -61,4 +71,10 @@ func PrintNode(n *Node) {
 		panic(err)
 	}
 	ioutil.WriteFile("d.dot", buf.Bytes(), 0644)
+
+	bs, err := json.MarshalIndent(n, "", "    ")
+	if err != nil {
+		panic(err)
+	}
+	ioutil.WriteFile("node.json", bs, 0644)
 }
