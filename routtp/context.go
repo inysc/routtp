@@ -88,13 +88,12 @@ func (ctx *Context) Clean() {
 	ctx.idx = 0
 }
 
-func (ctx *Context) Prefix(path, uri string) (idx int) {
-	j := 0
-	for i := 0; i < len(path) && j < len(uri); i++ {
+func (ctx *Context) Prefix(path, uri string) (i, j int) {
+	for ; i < len(path) && j < len(uri); i++ {
 		switch path[i] {
 		case ':':
-			if uri[i] == '/' {
-				return -1
+			if uri[j] == '/' {
+				return -1, -1
 			}
 			ii := i + 1
 			jj := j
@@ -113,9 +112,10 @@ func (ctx *Context) Prefix(path, uri string) (idx int) {
 				Key: path[i+1:],
 				Val: uri[j:],
 			})
+			return i + 1, j
 		case uri[j]:
 		default:
-			return -1
+			return -1, -1
 		}
 		j++
 	}

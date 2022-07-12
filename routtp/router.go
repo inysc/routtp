@@ -1,12 +1,14 @@
 package routtp
 
-import "net/http"
+import (
+	"net/http"
+)
 
 func New() *Router {
 	return &Router{
 		NotFound: func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(404)
-			w.Write([]byte("404 Not Found"))
+			w.Write([]byte("404 Not Found!!!"))
 		},
 		Method: make([]Pair[string, *Node], 0, 10),
 	}
@@ -14,10 +16,11 @@ func New() *Router {
 
 type Router struct {
 	NotFound HandlerFunc
+	Handlers HandlersChain
 	Method   []Pair[string, *Node]
 }
 
-func (router *Router) Add(isRoute bool, meth, path string, fn ...HandlerFunc) {
+func (router *Router) Add(meth, path string, fn ...HandlerFunc) {
 	var root *Node
 	for _, v := range router.Method {
 		if v.Key == meth {
@@ -31,27 +34,49 @@ func (router *Router) Add(isRoute bool, meth, path string, fn ...HandlerFunc) {
 			Val: root,
 		})
 	}
-	root.AddRoute(isRoute, path, fn...)
+
+	fns := router.combineHandlers(fn)
+
+	root.AddRoute(path, fns...)
+}
+
+func (router *Router) Use(fn ...HandlerFunc) {
+	router.Handlers = append(router.Handlers, fn...)
 }
 
 func (router *Router) POST(path string, fn ...HandlerFunc) {
-	router.Add(true, http.MethodPost, path, fn...)
+	router.Add(http.MethodPost, path, fn...)
 }
 
 func (router *Router) DELETE(path string, fn ...HandlerFunc) {
-	router.Add(true, http.MethodDelete, path, fn...)
+	router.Add(http.MethodDelete, path, fn...)
 }
 
 func (router *Router) PUT(path string, fn ...HandlerFunc) {
-	router.Add(true, http.MethodPut, path, fn...)
+	router.Add(http.MethodPut, path, fn...)
 }
 
 func (router *Router) PATCH(path string, fn ...HandlerFunc) {
-	router.Add(true, http.MethodPatch, path, fn...)
+	router.Add(http.MethodPatch, path, fn...)
 }
 
 func (router *Router) GET(path string, fn ...HandlerFunc) {
-	router.Add(true, http.MethodGet, path, fn...)
+	router.Add(http.MethodGet, path, fn...)
+}
+
+func (router *Router) Group(fn ...HandlerFunc) *Router {
+	return &Router{
+		NotFound: func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(404) },
+		Handlers: router.combineHandlers(fn),
+		Method:   router.Method,
+	}
+}
+
+func (router *Router) combineHandlers(fn HandlersChain) HandlersChain {
+	mergedHandlers := make(HandlersChain, len(router.Handlers)+len(fn))
+	copy(mergedHandlers, router.Handlers)
+	copy(mergedHandlers[len(router.Handlers):], fn)
+	return mergedHandlers
 }
 
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -69,12 +94,14 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx.Request = r
 	ctx.Response = w
-	if !root.Get(ctx) {
+	if !root.Get(ctx, "") {
 		r = r.WithContext(ctx)
+		ctx.Request = r
 		router.NotFound(w, r)
+		return
 	}
 	r = r.WithContext(ctx)
-
+	ctx.Request = r
 	for ; ctx.idx < len(ctx.Fns); ctx.idx++ {
 		ctx.Fns[ctx.idx](w, r)
 	}

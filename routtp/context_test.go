@@ -13,8 +13,8 @@ func TestPrefix(t *testing.T) {
 		{A: "/rvsl/:ecd", B: "/rvsl/asdf/ghjk"}, // ecd<asdf>
 		{A: "/rvsl/*ecd", B: "/rvsl/asdf/ghjk"},
 	} {
-		idx := ctx.Prefix(v.A, v.B)
-		t.Logf("idx<%d>, param<%+v>", idx, ctx.Param)
+		i, j := ctx.Prefix(v.A, v.B)
+		t.Logf("i<%d>, j<%d>, param<%+v>", i, j, ctx.Param)
 		ctx.Clean()
 	}
 }

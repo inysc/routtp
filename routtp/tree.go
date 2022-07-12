@@ -33,7 +33,7 @@ func NewNode(typ nodeType, path string, handlers HandlersChain) *Node {
 	}
 }
 
-func (n *Node) AddRoute(isRoute bool, path string, handlers ...HandlerFunc) {
+func (n *Node) AddRoute(path string, handlers ...HandlerFunc) {
 	if n.Path == "" {
 		n.Path = path
 		n.Type = nodeLeaf
@@ -74,13 +74,13 @@ func (n *Node) AddRoute(isRoute bool, path string, handlers ...HandlerFunc) {
 		return
 	}
 
-	n.insChild(isRoute, path[idx:], "", handlers) // i == len(n.Path)
+	n.insChild(path[idx:], "", handlers) // i == len(n.Path)
 }
 
-func (n *Node) insChild(isRoute bool, path string, fullPath string, handlers HandlersChain) {
+func (n *Node) insChild(path string, fullPath string, handlers HandlersChain) {
 	for _, v := range n.Children {
 		if v.Path[0] == path[0] {
-			v.AddRoute(isRoute, path, handlers...)
+			v.AddRoute(path, handlers...)
 			return
 		}
 	}
@@ -104,25 +104,30 @@ func (n *Node) appendChild(newNode *Node) {
 	}
 }
 
-func (n *Node) Get(ctx *Context) bool {
+func (n *Node) Get(ctx *Context, uri string) bool {
 	if n == nil {
 		return false
 	}
 
-	uri := ctx.Request.RequestURI
-	idx := ctx.Prefix(n.Path, uri)
-	if idx == -1 {
+	if uri == "" {
+		uri = ctx.Request.URL.Path
+	}
+
+	idxi, idxj := ctx.Prefix(n.Path, uri)
+	if idxi == -1 {
 		return false
 	}
-	ctx.Fns = append(ctx.Fns, n.Handlers...)
-	uri = uri[idx:]
-	if len(uri) > 0 {
+
+	if idxj != len(uri) {
 		for _, v := range n.Children {
-			if v.Path[0] == uri[0] {
-				return v.Get(ctx)
+			switch v.Path[0] {
+			case ':', '*', uri[idxj]:
+				return v.Get(ctx, uri[idxj:])
 			}
 		}
 		return false
 	}
-	return n.Type&nodeLeaf == 0
+
+	ctx.Fns = append(ctx.Fns, n.Handlers...)
+	return true
 }
