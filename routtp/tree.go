@@ -129,5 +129,5 @@ func (n *Node) Get(ctx *Context, uri string) bool {
 	}
 
 	ctx.Fns = append(ctx.Fns, n.Handlers...)
-	return true
+	return len(n.Handlers) != 0
 }

@@ -51,6 +51,7 @@ func main() {
 	router.GET("/evo/rvsl/", fn)
 	group.GET("/evo/rvsl/ecd", fn)
 	router.GET("/evo/rvsl/ecdef", fn)
+	router.GET("/evo/rvsl/ecdeg", fn)
 	router.GET("/evo/rvsl/ecd/:a", fn)
 	router.GET("/evo/rvsl/ecd/:a/", fn)
 	router.GET("/evo/rvsl/ecd/:a/fgd", fn)
