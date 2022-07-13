@@ -125,7 +125,7 @@ func (ctx *Context) Prefix(path, uri string) (i, j int) {
 func (ctx *Context) Next() {
 	ctx.idx++
 	for ctx.idx < len(ctx.Fns) {
-		ctx.Fns[ctx.idx](ctx.Response, ctx.Request)
+		ctx.Fns[ctx.idx](ctx)
 		ctx.idx++
 	}
 }

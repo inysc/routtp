@@ -18,16 +18,14 @@ const (
 
 type Node struct {
 	Path     string
-	Type     nodeType
 	Children []*Node
 	Handlers HandlersChain `json:"-"`
 	// FullPath string
 }
 
-func NewNode(typ nodeType, path string, handlers HandlersChain) *Node {
+func NewNode(path string, handlers HandlersChain) *Node {
 	return &Node{
 		Path:     path,
-		Type:     typ,
 		Children: []*Node{},
 		Handlers: handlers,
 	}
@@ -36,7 +34,6 @@ func NewNode(typ nodeType, path string, handlers HandlersChain) *Node {
 func (n *Node) AddRoute(path string, handlers ...HandlerFunc) {
 	if n.Path == "" {
 		n.Path = path
-		n.Type = nodeLeaf
 		n.Handlers = handlers
 		return
 	}
@@ -57,18 +54,16 @@ func (n *Node) AddRoute(path string, handlers ...HandlerFunc) {
 			}
 		}
 
-		oldNode := NewNode(n.Type, n.Path[idx:], n.Handlers)
+		oldNode := NewNode(n.Path[idx:], n.Handlers)
 		oldNode.Children = n.Children
 
-		n.Type = nodeNormal
 		n.Path = n.Path[:idx]
 		n.Handlers = []HandlerFunc{}
 		n.Children = []*Node{oldNode}
 		if idx < len(path) {
-			newNode := NewNode(nodeLeaf, path[idx:], handlers)
+			newNode := NewNode(path[idx:], handlers)
 			n.Children = append(n.Children, newNode)
 		} else {
-			n.Type = nodeLeaf
 			n.Handlers = handlers
 		}
 		return
@@ -84,7 +79,7 @@ func (n *Node) insChild(path string, fullPath string, handlers HandlersChain) {
 			return
 		}
 	}
-	n.appendChild(NewNode(nodeLeaf, path, handlers))
+	n.appendChild(NewNode(path, handlers))
 }
 
 func (n *Node) appendChild(newNode *Node) {

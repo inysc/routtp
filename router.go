@@ -6,9 +6,8 @@ import (
 
 func New() *Router {
 	return &Router{
-		NotFound: func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(404)
-			w.Write([]byte("404 Not Found!!!"))
+		NotFound: func(ctx *Context) {
+			ctx.STRING(404, "404 NOT Found!!!")
 		},
 		Method: make([]Pair[string, *Node], 0, 10),
 	}
@@ -66,7 +65,7 @@ func (router *Router) GET(path string, fn ...HandlerFunc) {
 
 func (router *Router) Group(fn ...HandlerFunc) *Router {
 	return &Router{
-		NotFound: func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(404) },
+		NotFound: func(ctx *Context) { ctx.STRING(404, "404 Not Found!!!") },
 		Handlers: router.combineHandlers(fn),
 		Method:   router.Method,
 	}
@@ -95,14 +94,12 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx.Request = r
 	ctx.Response = w
 	if !root.Get(ctx, "") {
-		r = r.WithContext(ctx)
-		ctx.Request = r
-		router.NotFound(w, r)
+		router.NotFound(ctx)
 		return
 	}
 	r = r.WithContext(ctx)
 	ctx.Request = r
 	for ; ctx.idx < len(ctx.Fns); ctx.idx++ {
-		ctx.Fns[ctx.idx](w, r)
+		ctx.Fns[ctx.idx](ctx)
 	}
 }

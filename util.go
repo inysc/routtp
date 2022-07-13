@@ -2,33 +2,19 @@ package routtp
 
 import (
 	"math"
-	"net/http"
-	"path"
 	"unsafe"
 )
 
 // AbortIndex represents a typical value used in abort functions.
 const AbortIndex int8 = math.MaxInt8 >> 1
 
-type HandlerFunc = http.HandlerFunc
-type HandlersChain []http.HandlerFunc
+type HandlerFunc = func(*Context)
+type HandlersChain []HandlerFunc
 
 func assert(guard bool, text string) {
 	if guard {
 		panic(text)
 	}
-}
-
-func JoinPaths(absolutePath, relativePath string) string {
-	if relativePath == "" {
-		return absolutePath
-	}
-
-	finalPath := path.Join(absolutePath, relativePath)
-	if LastChar(relativePath) == '/' && LastChar(finalPath) != '/' {
-		return finalPath + "/"
-	}
-	return finalPath
 }
 
 func longestPrefix(a, b string) (idx int) {
@@ -45,13 +31,6 @@ func longestPrefix(a, b string) (idx int) {
 	}
 
 	return idx
-}
-
-func LastChar(str string) uint8 {
-	if str == "" {
-		panic("The length of the string can't be 0")
-	}
-	return str[len(str)-1]
 }
 
 func InvalidPath(path string) {
