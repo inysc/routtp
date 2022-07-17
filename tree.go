@@ -4,18 +4,6 @@ import (
 	"fmt"
 )
 
-type nodeType uint8
-
-const (
-	// 普通的中间节点
-	nodeNormal nodeType = 1 << iota
-	// 叶子节点
-	//
-	// 这里的叶子不是将它是树的叶子
-	// 而是说，它是某个路由的结尾
-	nodeLeaf
-)
-
 type Node struct {
 	Path     string
 	Children []*Node

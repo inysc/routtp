@@ -7,7 +7,12 @@ import (
 func New() *Router {
 	return &Router{
 		NotFound: func(ctx *Context) {
-			ctx.STRING(404, "404 NOT Found!!!")
+			ctx.Exception(&exception{
+				code:   http.StatusNotFound,
+				status: http.StatusNotFound,
+				msg:    "404 Not Found!!!",
+				data:   "",
+			})
 		},
 		Method: make([]Pair[string, *Node], 0, 10),
 	}
@@ -65,7 +70,14 @@ func (router *Router) GET(path string, fn ...HandlerFunc) {
 
 func (router *Router) Group(fn ...HandlerFunc) *Router {
 	return &Router{
-		NotFound: func(ctx *Context) { ctx.STRING(404, "404 Not Found!!!") },
+		NotFound: func(ctx *Context) {
+			ctx.Exception(&exception{
+				code:   http.StatusNotFound,
+				status: http.StatusNotFound,
+				msg:    "404 Not Found!!!",
+				data:   "",
+			})
+		},
 		Handlers: router.combineHandlers(fn),
 		Method:   router.Method,
 	}
