@@ -1,7 +1,9 @@
 package routtp
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -51,6 +53,15 @@ func (ctx *Context) Err() error {
 	return nil
 }
 
+func (ctx *Context) Get(key string) string {
+	for _, v := range ctx.Param {
+		if key == v.Key {
+			return v.Val
+		}
+	}
+	return ""
+}
+
 func (ctx *Context) Value(key any) any {
 	k, ok := key.(string)
 	if !ok {
@@ -79,7 +90,7 @@ func (ctx *Context) Clone() (ctxClone *Context) {
 	return
 }
 
-func (ctx *Context) Clean() {
+func (ctx *Context) clean() {
 	ctx.Request = nil
 	ctx.Response = nil
 	ctx.Param = ctx.Param[:0]
@@ -88,7 +99,7 @@ func (ctx *Context) Clean() {
 	ctx.idx = 0
 }
 
-func (ctx *Context) Prefix(path, uri string) (i, j int) {
+func (ctx *Context) prefix(path, uri string) (i, j int) {
 	for ; i < len(path) && j < len(uri); i++ {
 		switch path[i] {
 		case ':':
@@ -133,3 +144,47 @@ func (ctx *Context) Next() {
 func (ctx *Context) Abort() {
 	ctx.idx = len(ctx.Fns)
 }
+
+// ---------- Request ----------
+// ---------- Request Header ----------
+func (ctx *Context) HeaderGet(key string) string { return ctx.Request.Header.Get(key) }
+
+func (ctx *Context) HeaderSet(key, value string) { ctx.Request.Header.Set(key, value) }
+
+func (ctx *Context) HeaderAdd(key, value string) { ctx.Request.Header.Add(key, value) }
+
+func (ctx *Context) HeaderDel(key string) { ctx.Request.Header.Del(key) }
+
+func (ctx *Context) HeaderValues(key string) []string { return ctx.Request.Header.Values(key) }
+
+func (ctx *Context) HeaderWrite(w io.Writer) error { return ctx.Request.Header.Write(w) }
+
+func (ctx *Context) HeaderWriteSubset(w io.Writer, exclude map[string]bool) error {
+	return ctx.Request.Header.WriteSubset(w, exclude)
+}
+
+func (ctx *Context) HeaderClone() http.Header { return ctx.Request.Header.Clone() }
+
+// ---------- Request Body ----------
+func (ctx *Context) GetBody() []byte {
+	buff := bytes.NewBuffer(make([]byte, 0, ctx.Request.ContentLength))
+	io.Copy(buff, ctx.Request.Body)
+	ctx.Request.Body.Close()
+	return buff.Bytes()
+}
+
+// TODO:
+func (ctx *Context) BindJSON() error { return nil }
+
+// TODO:
+func (ctx *Context) BindQuery() error { return nil }
+
+// TODO:
+func (ctx *Context) Bind() error { return nil }
+
+// ---------- Response ----------
+func (ctx *Context) Write(p []byte) (int, error) { return ctx.Response.Write(p) }
+
+func (ctx *Context) Header() http.Header { return ctx.Response.Header() }
+
+func (ctx *Context) WriteHeader(statusCode int) { ctx.Response.WriteHeader(statusCode) }

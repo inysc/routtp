@@ -96,7 +96,7 @@ func (n *Node) Get(ctx *Context, uri string) bool {
 		uri = ctx.Request.URL.Path
 	}
 
-	idxi, idxj := ctx.Prefix(n.Path, uri)
+	idxi, idxj := ctx.prefix(n.Path, uri)
 	if idxi == -1 {
 		return false
 	}

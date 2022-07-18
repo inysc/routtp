@@ -6,8 +6,8 @@ import (
 )
 
 func (ctx *Context) write(statusCode int, contentType string, body []byte) {
-	ctx.Response.WriteHeader(statusCode)
-	ctx.Response.Write(body)
+	ctx.WriteHeader(statusCode)
+	ctx.Write(body)
 }
 
 type JSON = map[string]any

@@ -99,7 +99,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := ctxpool.Get().(*Context)
 	defer func() {
-		ctx.Clean()
+		ctx.clean()
 		ctxpool.Put(ctx)
 	}()
 
