@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -173,14 +174,20 @@ func (ctx *Context) GetBody() []byte {
 	return buff.Bytes()
 }
 
-// TODO:
-func (ctx *Context) BindJSON() error { return nil }
+func (ctx *Context) BindJSON(v any) error {
+	return jsonbinding.Bind(ctx.Request, v)
+}
 
-// TODO:
-func (ctx *Context) BindQuery() error { return nil }
+func (ctx *Context) BindQuery(v any) error {
+	return mapForm(v, ctx.Request.Form)
+}
 
-// TODO:
-func (ctx *Context) Bind() error { return nil }
+func (ctx *Context) Bind(v any) error {
+	if strings.Contains(ctx.Request.Header.Get("Content-Type"), "application/json") {
+		return ctx.BindJSON(v)
+	}
+	return ctx.BindQuery(v)
+}
 
 // ---------- Response ----------
 func (ctx *Context) Write(p []byte) (int, error) { return ctx.Response.Write(p) }
