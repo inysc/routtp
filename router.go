@@ -111,7 +111,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	r = r.WithContext(ctx)
 	ctx.Request = r
-	for ; ctx.idx < len(ctx.Fns); ctx.idx++ {
-		ctx.Fns[ctx.idx](ctx)
+	for ; ctx.idx < len(ctx.fns); ctx.idx++ {
+		ctx.fns[ctx.idx](ctx)
 	}
 }

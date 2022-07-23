@@ -18,9 +18,9 @@ func init() {
 			return &Context{
 				Request:  nil,
 				Response: nil,
-				Param:    make([]Pair[string, string], 0, 4),
+				param:    make([]Pair[string, string], 0, 4),
 				Cancel:   func() {},
-				Fns:      make(HandlersChain, 0, 4),
+				fns:      make(HandlersChain, 0, 4),
 			}
 		},
 	}
@@ -34,9 +34,10 @@ type Pair[K, V any] struct {
 type Context struct {
 	Request  *http.Request
 	Response http.ResponseWriter
-	Param    []Pair[string, string]
+	param    []Pair[string, string]
+	values   []Pair[string, any]
 	Cancel   context.CancelFunc
-	Fns      HandlersChain
+	fns      HandlersChain
 	idx      int
 }
 
@@ -54,8 +55,8 @@ func (ctx *Context) Err() error {
 	return nil
 }
 
-func (ctx *Context) Get(key string) string {
-	for _, v := range ctx.Param {
+func (ctx *Context) Param(key string) string {
+	for _, v := range ctx.param {
 		if key == v.Key {
 			return v.Val
 		}
@@ -63,13 +64,10 @@ func (ctx *Context) Get(key string) string {
 	return ""
 }
 
+// not implate
 func (ctx *Context) Value(key any) any {
-	k, ok := key.(string)
-	if !ok {
-		return nil
-	}
-	for _, v := range ctx.Param {
-		if k == v.Key {
+	for _, v := range ctx.values {
+		if v.Key == key {
 			return v.Val
 		}
 	}
@@ -80,13 +78,13 @@ func (ctx *Context) Clone() (ctxClone *Context) {
 	ctxClone = &Context{
 		Request:  ctx.Request,
 		Response: ctx.Response,
-		Param:    make([]Pair[string, string], 0, len(ctx.Param)),
+		param:    make([]Pair[string, string], 0, len(ctx.param)),
 		Cancel:   func() {},
-		Fns:      make(HandlersChain, 0, len(ctx.Fns)),
+		fns:      make(HandlersChain, 0, len(ctx.fns)),
 		idx:      ctx.idx,
 	}
 
-	copy(ctxClone.Param, ctx.Param)
+	copy(ctxClone.param, ctx.param)
 
 	return
 }
@@ -94,9 +92,9 @@ func (ctx *Context) Clone() (ctxClone *Context) {
 func (ctx *Context) clean() {
 	ctx.Request = nil
 	ctx.Response = nil
-	ctx.Param = ctx.Param[:0]
+	ctx.param = ctx.param[:0]
 	ctx.Cancel = func() {}
-	ctx.Fns = ctx.Fns[:0]
+	ctx.fns = ctx.fns[:0]
 	ctx.idx = 0
 }
 
@@ -115,12 +113,12 @@ func (ctx *Context) prefix(path, uri string) (i, j int) {
 			for j+1 < len(uri) && uri[j+1] != '/' {
 				j++
 			}
-			ctx.Param = append(ctx.Param, Pair[string, string]{
+			ctx.param = append(ctx.param, Pair[string, string]{
 				Key: path[ii : i+1],
 				Val: uri[jj : j+1],
 			})
 		case '*':
-			ctx.Param = append(ctx.Param, Pair[string, string]{
+			ctx.param = append(ctx.param, Pair[string, string]{
 				Key: path[i+1:],
 				Val: uri[j:],
 			})
@@ -136,14 +134,14 @@ func (ctx *Context) prefix(path, uri string) (i, j int) {
 
 func (ctx *Context) Next() {
 	ctx.idx++
-	for ctx.idx < len(ctx.Fns) {
-		ctx.Fns[ctx.idx](ctx)
+	for ctx.idx < len(ctx.fns) {
+		ctx.fns[ctx.idx](ctx)
 		ctx.idx++
 	}
 }
 
 func (ctx *Context) Abort() {
-	ctx.idx = len(ctx.Fns)
+	ctx.idx = len(ctx.fns)
 }
 
 // ---------- Request ----------
@@ -183,7 +181,7 @@ func (ctx *Context) BindQuery(v any) error {
 }
 
 func (ctx *Context) Bind(v any) error {
-	if strings.Contains(ctx.Request.Header.Get("Content-Type"), "application/json") {
+	if strings.Contains(ctx.HeaderGet("Content-Type"), "application/json") {
 		return ctx.BindJSON(v)
 	}
 	return ctx.BindQuery(v)
@@ -195,3 +193,64 @@ func (ctx *Context) Write(p []byte) (int, error) { return ctx.Response.Write(p) 
 func (ctx *Context) Header() http.Header { return ctx.Response.Header() }
 
 func (ctx *Context) WriteHeader(statusCode int) { ctx.Response.WriteHeader(statusCode) }
+
+func (ctx *Context) Set(key string, val any) {
+	ctx.values = append(ctx.values, Pair[string, any]{key, val})
+}
+
+func (ctx *Context) Get(key string) any {
+	for _, v := range ctx.values {
+		if v.Key == key {
+			return v.Val
+		}
+	}
+	return nil
+}
+
+func (ctx *Context) GetBool(key string) bool {
+	for _, v := range ctx.values {
+		if v.Key == key {
+			val, ok := v.Val.(bool)
+			if ok {
+				return val
+			}
+		}
+	}
+	return false
+}
+
+func (ctx *Context) GetString(key string) string {
+	for _, v := range ctx.values {
+		if v.Key == key {
+			val, ok := v.Val.(string)
+			if ok {
+				return val
+			}
+		}
+	}
+	return ""
+}
+
+func (ctx *Context) GetInt(key string) int {
+	for _, v := range ctx.values {
+		if v.Key == key {
+			val, ok := v.Val.(int)
+			if ok {
+				return val
+			}
+		}
+	}
+	return 0
+}
+
+func (ctx *Context) GetUint(key string) uint {
+	for _, v := range ctx.values {
+		if v.Key == key {
+			val, ok := v.Val.(uint)
+			if ok {
+				return val
+			}
+		}
+	}
+	return 0
+}
