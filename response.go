@@ -49,11 +49,11 @@ func (ctx *Context) Success(body any) {
 }
 
 // 异常响应
+// 不会包含 Msg
 func (ctx *Context) Exception(resp Response) {
 	ctx.JSON(resp.Status(), JSON{
 		"code": resp.Code(),
 		"msg":  resp.Msg(),
-		"data": resp.Data(),
 	})
 }
 

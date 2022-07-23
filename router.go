@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func New() *Router {
+func New(fn ...HandlerFunc) *Router {
 	return &Router{
 		NotFound: func(ctx *Context) {
 			ctx.Exception(&exception{
@@ -14,7 +14,8 @@ func New() *Router {
 				data:   "",
 			})
 		},
-		Method: make([]Pair[string, *Node], 0, 10),
+		Handlers: fn,
+		Method:   make([]Pair[string, *Node], 0, 10),
 	}
 }
 
