@@ -1,7 +1,6 @@
 package routtp
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -31,26 +30,19 @@ func (jsonBinding) Bind(req *http.Request, obj any) error {
 	if req == nil || req.Body == nil {
 		return errors.New("invalid request")
 	}
-	return decodeJSON(req.Body, obj)
-}
-
-func (jsonBinding) BindBody(body []byte, obj any) error {
-	return decodeJSON(bytes.NewReader(body), obj)
-}
-
-func decodeJSON(r io.Reader, obj any) error {
-	decoder := json.NewDecoder(r)
-	if EnableDecoderUseNumber {
-		decoder.UseNumber()
-	}
-
-	if EnableDecoderDisallowUnknownFields {
-		decoder.DisallowUnknownFields()
-	}
-
-	err := decoder.Decode(obj)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}
-	return nil
+	err = req.Body.Close()
+	if err != nil {
+		logger.Errorf("failed to close request body<%s>", err)
+		return err
+	}
+	logger.Debugf("request body: %s", body)
+	return jsonbinding.BindBody(body, obj)
+}
+
+func (jsonBinding) BindBody(body []byte, obj any) error {
+	return json.Unmarshal(body, obj)
 }
