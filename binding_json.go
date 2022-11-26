@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+
+	"github.com/inysc/facade"
 )
 
 // EnableDecoderUseNumber is used to call the UseNumber method on the JSON
@@ -36,10 +38,10 @@ func (jsonBinding) Bind(req *http.Request, obj any) error {
 	}
 	err = req.Body.Close()
 	if err != nil {
-		logger.Errorf("failed to close request body<%s>", err)
+		facade.Errorf("failed to close request body<%s>", err)
 		return err
 	}
-	logger.Debugf("request body: %s", body)
+	facade.Debugf("request body: %s", body)
 	return jsonbinding.BindBody(body, obj)
 }
 
