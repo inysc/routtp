@@ -172,6 +172,14 @@ func (ctx *Context) GetBody() []byte {
 	return buff.Bytes()
 }
 
+func (ctx *Context) RealIP() string {
+	if ip := ctx.Request.Header.Get("X-Real-IP"); ip != "" {
+		return ip
+	}
+
+	return ctx.Request.RemoteAddr
+}
+
 func (ctx *Context) BindJSON(v any) error {
 	return jsonbinding.Bind(ctx.Request, v)
 }
