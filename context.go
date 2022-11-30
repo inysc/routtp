@@ -191,11 +191,14 @@ func (ctx *Context) RealIP() string {
 
 func (ctx *Context) UserPrior() uint8 {
 	up := ctx.HeaderGet("x-apigw-user-prior")
-	t, err := strconv.ParseUint(up, 10, 8)
-	if err != nil {
-		facade.Errorf("parse user prior failed, err: %v", err)
+	if up != "" {
+		t, err := strconv.ParseUint(up, 10, 8)
+		if err != nil {
+			facade.Warnf("parse user prior failed, err: %v", err)
+		}
+		return uint8(t)
 	}
-	return uint8(t)
+	return 0
 }
 
 func (ctx *Context) Username() string { return ctx.HeaderGet("x-apigw-username") }
