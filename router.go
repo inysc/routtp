@@ -5,6 +5,14 @@ import (
 	"net/http/pprof"
 )
 
+type methods struct {
+	mehtods []Pair[string, *Node]
+}
+
+func (m *methods) Append(p Pair[string, *Node]) {
+	m.mehtods = append(m.mehtods, p)
+}
+
 func New(fn ...HandlerFunc) *Router {
 	return &Router{
 		NotFound: func(ctx *Context) {
@@ -15,30 +23,27 @@ func New(fn ...HandlerFunc) *Router {
 				data:   "",
 			})
 		},
-		Handlers: fn,
-		Method:   make([]Pair[string, *Node], 0, 10),
+		middle:  fn,
+		methods: &methods{make([]Pair[string, *Node], 0, 10)},
 	}
 }
 
 type Router struct {
 	NotFound HandlerFunc
-	Handlers HandlersChain
-	Method   []Pair[string, *Node]
+	middle   HandlersChain
+	methods  *methods
 }
 
 func (router *Router) Add(meth, path string, fn ...HandlerFunc) {
 	var root *Node
-	for _, v := range router.Method {
+	for _, v := range router.methods.mehtods {
 		if v.Key == meth {
 			root = v.Val
 		}
 	}
 	if root == nil {
 		root = &Node{}
-		router.Method = append(router.Method, Pair[string, *Node]{
-			Key: meth,
-			Val: root,
-		})
+		router.methods.Append(Pair[string, *Node]{meth, root})
 	}
 
 	fns := router.combineHandlers(fn)
@@ -47,7 +52,7 @@ func (router *Router) Add(meth, path string, fn ...HandlerFunc) {
 }
 
 func (router *Router) Use(fn ...HandlerFunc) {
-	router.Handlers = append(router.Handlers, fn...)
+	router.middle = append(router.middle, fn...)
 }
 
 func (router *Router) POST(path string, fn ...HandlerFunc) {
@@ -72,29 +77,22 @@ func (router *Router) GET(path string, fn ...HandlerFunc) {
 
 func (router *Router) Group(fn ...HandlerFunc) *Router {
 	return &Router{
-		NotFound: func(ctx *Context) {
-			ctx.Exception(&exception{
-				code:   http.StatusNotFound,
-				status: http.StatusNotFound,
-				msg:    "404 Not Found!!!",
-				data:   "",
-			})
-		},
-		Handlers: router.combineHandlers(fn),
-		Method:   router.Method,
+		NotFound: router.NotFound,
+		middle:   router.combineHandlers(fn),
+		methods:  router.methods,
 	}
 }
 
 func (router *Router) combineHandlers(fn HandlersChain) HandlersChain {
-	mergedHandlers := make(HandlersChain, len(router.Handlers)+len(fn))
-	copy(mergedHandlers, router.Handlers)
-	copy(mergedHandlers[len(router.Handlers):], fn)
+	mergedHandlers := make(HandlersChain, len(router.middle)+len(fn))
+	copy(mergedHandlers, router.middle)
+	copy(mergedHandlers[len(router.middle):], fn)
 	return mergedHandlers
 }
 
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var root *Node
-	for _, v := range router.Method {
+	for _, v := range router.methods.mehtods {
 		if v.Key == r.Method {
 			root = v.Val
 		}
@@ -120,7 +118,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (router *Router) WithPprof() {
 	router.GET("/debug/pprof", Wrap(pprof.Index))
-  router.GET("/debug/pprof/:key", Wrap(pprof.Index))
+	router.GET("/debug/pprof/:key", Wrap(pprof.Index))
 	router.GET("/debug/pprof/cmdline", Wrap(pprof.Cmdline))
 	router.GET("/debug/pprof/profile", Wrap(pprof.Profile))
 	router.GET("/debug/pprof/symbol", Wrap(pprof.Symbol))
