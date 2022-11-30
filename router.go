@@ -2,6 +2,7 @@ package routtp
 
 import (
 	"net/http"
+	"net/http/pprof"
 )
 
 func New(fn ...HandlerFunc) *Router {
@@ -115,4 +116,12 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for ; ctx.idx < len(ctx.fns); ctx.idx++ {
 		ctx.fns[ctx.idx](ctx)
 	}
+}
+
+func (router *Router) WithPprof() {
+	router.GET("/debug/pprof/", Wrap(pprof.Index))
+	router.GET("/debug/pprof/cmdline", Wrap(pprof.Cmdline))
+	router.GET("/debug/pprof/profile", Wrap(pprof.Profile))
+	router.GET("/debug/pprof/symbol", Wrap(pprof.Symbol))
+	router.GET("/debug/pprof/trace", Wrap(pprof.Trace))
 }
