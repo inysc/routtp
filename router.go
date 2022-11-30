@@ -119,7 +119,8 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (router *Router) WithPprof() {
-	router.GET("/debug/pprof/", Wrap(pprof.Index))
+	router.GET("/debug/pprof", Wrap(pprof.Index))
+  router.GET("/debug/pprof/:key", Wrap(pprof.Index))
 	router.GET("/debug/pprof/cmdline", Wrap(pprof.Cmdline))
 	router.GET("/debug/pprof/profile", Wrap(pprof.Profile))
 	router.GET("/debug/pprof/symbol", Wrap(pprof.Symbol))
