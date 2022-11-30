@@ -2,6 +2,7 @@ package routtp
 
 import (
 	"math"
+	"net/http"
 	"unsafe"
 )
 
@@ -55,4 +56,10 @@ func StringToBytes(s string) []byte {
 // BytesToString converts byte slice to string without a memory allocation.
 func BytesToString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
+}
+
+func Wrap(f func(w http.ResponseWriter, r *http.Request)) func(*Context) {
+	return func(ctx *Context) {
+		f(ctx.Response, ctx.Request)
+	}
 }

@@ -5,9 +5,12 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/inysc/facade"
 )
 
 var ctxpool sync.Pool
@@ -173,12 +176,35 @@ func (ctx *Context) GetBody() []byte {
 }
 
 func (ctx *Context) RealIP() string {
-	if ip := ctx.Request.Header.Get("X-Real-IP"); ip != "" {
+	ip := ctx.HeaderGet("x-apigw-ip")
+	if ip != "" {
+		return ip
+	}
+
+	ip = ctx.HeaderGet("X-Real-IP")
+	if ip != "" {
 		return ip
 	}
 
 	return ctx.Request.RemoteAddr
 }
+
+func (ctx *Context) UserPrior() uint8 {
+	up := ctx.HeaderGet("x-apigw-user-prior")
+	t, err := strconv.ParseUint(up, 10, 8)
+	if err != nil {
+		facade.Errorf("parse user prior failed, err: %v", err)
+	}
+	return uint8(t)
+}
+
+func (ctx *Context) Username() string { return ctx.HeaderGet("x-apigw-username") }
+
+func (ctx *Context) Traceid() string { return ctx.HeaderGet("x-apigw-traceid") }
+
+func (ctx *Context) Userid() string { return ctx.HeaderGet("x-apigw-userid") }
+
+func (ctx *Context) City() string { return ctx.HeaderGet("x-apigw-city") }
 
 func (ctx *Context) BindJSON(v any) error {
 	return jsonbinding.Bind(ctx.Request, v)
