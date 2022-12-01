@@ -3,6 +3,8 @@ package routtp
 import (
 	"net/http"
 	"net/http/pprof"
+
+	"github.com/inysc/facade"
 )
 
 type methods struct {
@@ -48,6 +50,7 @@ func (router *Router) Add(meth, path string, fn ...HandlerFunc) {
 
 	fns := router.combineHandlers(fn)
 
+	facade.Debugf("[routtp] %s %s %dops", meth, path, len(fns))
 	root.AddRoute(path, fns...)
 }
 
