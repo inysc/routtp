@@ -54,29 +54,21 @@ func (router *Router) Add(meth, path string, fn ...HandlerFunc) {
 	root.AddRoute(path, fns...)
 }
 
-func (router *Router) Use(fn ...HandlerFunc) {
-	router.middle = append(router.middle, fn...)
-}
+func (router *Router) Use(fn ...HandlerFunc) { router.middle = append(router.middle, fn...) }
 
-func (router *Router) POST(path string, fn ...HandlerFunc) {
-	router.Add(http.MethodPost, path, fn...)
-}
+func (router *Router) POST(path string, fn ...HandlerFunc) { router.Add(http.MethodPost, path, fn...) }
 
 func (router *Router) DELETE(path string, fn ...HandlerFunc) {
 	router.Add(http.MethodDelete, path, fn...)
 }
 
-func (router *Router) PUT(path string, fn ...HandlerFunc) {
-	router.Add(http.MethodPut, path, fn...)
-}
+func (router *Router) PUT(path string, fn ...HandlerFunc) { router.Add(http.MethodPut, path, fn...) }
 
 func (router *Router) PATCH(path string, fn ...HandlerFunc) {
 	router.Add(http.MethodPatch, path, fn...)
 }
 
-func (router *Router) GET(path string, fn ...HandlerFunc) {
-	router.Add(http.MethodGet, path, fn...)
-}
+func (router *Router) GET(path string, fn ...HandlerFunc) { router.Add(http.MethodGet, path, fn...) }
 
 func (router *Router) Group(fn ...HandlerFunc) *Router {
 	return &Router{
@@ -121,9 +113,9 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (router *Router) WithPprof() {
 	router.GET("/debug/pprof", Wrap(pprof.Index))
-	router.GET("/debug/pprof/:key", Wrap(pprof.Index))
 	router.GET("/debug/pprof/cmdline", Wrap(pprof.Cmdline))
 	router.GET("/debug/pprof/profile", Wrap(pprof.Profile))
 	router.GET("/debug/pprof/symbol", Wrap(pprof.Symbol))
 	router.GET("/debug/pprof/trace", Wrap(pprof.Trace))
+	router.GET("/debug/pprof/:key", Wrap(pprof.Index))
 }
