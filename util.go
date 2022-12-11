@@ -9,11 +9,11 @@ import (
 // AbortIndex represents a typical value used in abort functions.
 const AbortIndex int8 = math.MaxInt8 >> 1
 
-type HandlerFunc = func(*Context)
-type HandlersChain []HandlerFunc
+type Handler = func(*Context)
+type Handlers []Handler
 
 func assert(guard bool, text string) {
-	if guard {
+	if !guard {
 		panic(text)
 	}
 }
@@ -34,9 +34,10 @@ func longestPrefix(a, b string) (idx int) {
 	return idx
 }
 
+// TODO: 实现
 func InvalidPath(path string) {
-	assert(len(path) == 0, "must be at least a byte")
-	assert(path[0] != '/', "must begin with '/'")
+	assert(len(path) != 0, "must be at least a byte")
+	assert(path[0] == '/', "must begin with '/'")
 
 	for i := 1; i < len(path); i++ {
 

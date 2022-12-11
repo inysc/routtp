@@ -11,11 +11,11 @@ type methods struct {
 	mehtods []Pair[string, *Node]
 }
 
-func (m *methods) Append(p Pair[string, *Node]) {
+func (m *methods) append(p Pair[string, *Node]) {
 	m.mehtods = append(m.mehtods, p)
 }
 
-func New(fn ...HandlerFunc) *Router {
+func New(fn ...Handler) *Router {
 	return &Router{
 		NotFound: func(ctx *Context) {
 			ctx.Exception(&exception{
@@ -31,21 +31,21 @@ func New(fn ...HandlerFunc) *Router {
 }
 
 type Router struct {
-	NotFound HandlerFunc
-	middle   HandlersChain
-	methods  *methods
+	NotFound Handler
+	middle   Handlers
+	*methods
 }
 
-func (router *Router) Add(meth, path string, fn ...HandlerFunc) {
+func (router *Router) Add(meth, path string, fn ...Handler) {
 	var root *Node
-	for _, v := range router.methods.mehtods {
+	for _, v := range router.mehtods {
 		if v.Key == meth {
 			root = v.Val
 		}
 	}
 	if root == nil {
 		root = &Node{}
-		router.methods.Append(Pair[string, *Node]{meth, root})
+		router.append(Pair[string, *Node]{meth, root})
 	}
 
 	fns := router.combineHandlers(fn)
@@ -54,23 +54,14 @@ func (router *Router) Add(meth, path string, fn ...HandlerFunc) {
 	root.AddRoute(path, fns...)
 }
 
-func (router *Router) Use(fn ...HandlerFunc) { router.middle = append(router.middle, fn...) }
+func (router *Router) Use(fn ...Handler)                 { router.middle = append(router.middle, fn...) }
+func (router *Router) GET(path string, fn ...Handler)    { router.Add(http.MethodGet, path, fn...) }
+func (router *Router) PUT(path string, fn ...Handler)    { router.Add(http.MethodPut, path, fn...) }
+func (router *Router) POST(path string, fn ...Handler)   { router.Add(http.MethodPost, path, fn...) }
+func (router *Router) PATCH(path string, fn ...Handler)  { router.Add(http.MethodPatch, path, fn...) }
+func (router *Router) DELETE(path string, fn ...Handler) { router.Add(http.MethodDelete, path, fn...) }
 
-func (router *Router) POST(path string, fn ...HandlerFunc) { router.Add(http.MethodPost, path, fn...) }
-
-func (router *Router) DELETE(path string, fn ...HandlerFunc) {
-	router.Add(http.MethodDelete, path, fn...)
-}
-
-func (router *Router) PUT(path string, fn ...HandlerFunc) { router.Add(http.MethodPut, path, fn...) }
-
-func (router *Router) PATCH(path string, fn ...HandlerFunc) {
-	router.Add(http.MethodPatch, path, fn...)
-}
-
-func (router *Router) GET(path string, fn ...HandlerFunc) { router.Add(http.MethodGet, path, fn...) }
-
-func (router *Router) Group(fn ...HandlerFunc) *Router {
+func (router *Router) Group(fn ...Handler) *Router {
 	return &Router{
 		NotFound: router.NotFound,
 		middle:   router.combineHandlers(fn),
@@ -78,8 +69,8 @@ func (router *Router) Group(fn ...HandlerFunc) *Router {
 	}
 }
 
-func (router *Router) combineHandlers(fn HandlersChain) HandlersChain {
-	mergedHandlers := make(HandlersChain, len(router.middle)+len(fn))
+func (router *Router) combineHandlers(fn Handlers) Handlers {
+	mergedHandlers := make(Handlers, len(router.middle)+len(fn))
 	copy(mergedHandlers, router.middle)
 	copy(mergedHandlers[len(router.middle):], fn)
 	return mergedHandlers
@@ -87,7 +78,7 @@ func (router *Router) combineHandlers(fn HandlersChain) HandlersChain {
 
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var root *Node
-	for _, v := range router.methods.mehtods {
+	for _, v := range router.mehtods {
 		if v.Key == r.Method {
 			root = v.Val
 		}
@@ -98,14 +89,14 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctxpool.Put(ctx)
 	}()
 
+	r = r.WithContext(ctx)
 	ctx.Request = r
 	ctx.Response = w
-	if !root.Get(ctx, "") {
+	if !root.Get(ctx, r.URL.Path) {
 		router.NotFound(ctx)
 		return
 	}
-	r = r.WithContext(ctx)
-	ctx.Request = r
+
 	for ; ctx.idx < len(ctx.fns); ctx.idx++ {
 		ctx.fns[ctx.idx](ctx)
 	}

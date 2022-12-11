@@ -23,7 +23,7 @@ func init() {
 				Response: nil,
 				param:    make([]Pair[string, string], 0, 4),
 				Cancel:   func() {},
-				fns:      make(HandlersChain, 0, 4),
+				fns:      make(Handlers, 0, 4),
 			}
 		},
 	}
@@ -40,7 +40,7 @@ type Context struct {
 	param    []Pair[string, string]
 	values   []Pair[string, any]
 	Cancel   context.CancelFunc
-	fns      HandlersChain
+	fns      Handlers
 	idx      int
 }
 
@@ -82,8 +82,8 @@ func (ctx *Context) Clone() (ctxClone *Context) {
 		Request:  ctx.Request,
 		Response: ctx.Response,
 		param:    make([]Pair[string, string], 0, len(ctx.param)),
-		Cancel:   func() {},
-		fns:      make(HandlersChain, 0, len(ctx.fns)),
+		Cancel:   ctx.Cancel,
+		fns:      make(Handlers, 0, len(ctx.fns)),
 		idx:      ctx.idx,
 	}
 
@@ -143,29 +143,21 @@ func (ctx *Context) Next() {
 	}
 }
 
-func (ctx *Context) Abort() {
-	ctx.idx = len(ctx.fns)
-}
+func (ctx *Context) Abort() { ctx.idx = len(ctx.fns) }
 
 // ---------- Request ----------
 // ---------- Request Header ----------
-func (ctx *Context) HeaderGet(key string) string { return ctx.Request.Header.Get(key) }
-
-func (ctx *Context) HeaderSet(key, value string) { ctx.Request.Header.Set(key, value) }
-
-func (ctx *Context) HeaderAdd(key, value string) { ctx.Request.Header.Add(key, value) }
-
-func (ctx *Context) HeaderDel(key string) { ctx.Request.Header.Del(key) }
-
+func (ctx *Context) RequestHeader() http.Header       { return ctx.Request.Header }
+func (ctx *Context) HeaderGet(key string) string      { return ctx.Request.Header.Get(key) }
+func (ctx *Context) HeaderSet(key, value string)      { ctx.Request.Header.Set(key, value) }
+func (ctx *Context) HeaderAdd(key, value string)      { ctx.Request.Header.Add(key, value) }
+func (ctx *Context) HeaderDel(key string)             { ctx.Request.Header.Del(key) }
 func (ctx *Context) HeaderValues(key string) []string { return ctx.Request.Header.Values(key) }
-
-func (ctx *Context) HeaderWrite(w io.Writer) error { return ctx.Request.Header.Write(w) }
-
+func (ctx *Context) HeaderWrite(w io.Writer) error    { return ctx.Request.Header.Write(w) }
+func (ctx *Context) HeaderClone() http.Header         { return ctx.Request.Header.Clone() }
 func (ctx *Context) HeaderWriteSubset(w io.Writer, exclude map[string]bool) error {
 	return ctx.Request.Header.WriteSubset(w, exclude)
 }
-
-func (ctx *Context) HeaderClone() http.Header { return ctx.Request.Header.Clone() }
 
 // ---------- Request Body ----------
 func (ctx *Context) GetBody() []byte {
@@ -201,24 +193,17 @@ func (ctx *Context) UserPrior() uint8 {
 	return 0
 }
 
+// ---------- Apigw ----------
 func (ctx *Context) Username() string { return ctx.HeaderGet("x-apigw-username") }
+func (ctx *Context) Traceid() string  { return ctx.HeaderGet("x-apigw-traceid") }
+func (ctx *Context) Userid() string   { return ctx.HeaderGet("x-apigw-userid") }
+func (ctx *Context) City() string     { return ctx.HeaderGet("x-apigw-city") }
 
-func (ctx *Context) Traceid() string { return ctx.HeaderGet("x-apigw-traceid") }
-
-func (ctx *Context) Userid() string { return ctx.HeaderGet("x-apigw-userid") }
-
-func (ctx *Context) City() string { return ctx.HeaderGet("x-apigw-city") }
-
-func (ctx *Context) BindJSON(v any) error {
-	return jsonbinding.Bind(ctx.Request, v)
-}
-
-func (ctx *Context) BindQuery(v any) error {
-	return mapForm(v, ctx.Request.Form)
-}
-
+// ---------- Bind ----------
+func (ctx *Context) BindJSON(v any) error  { return jsonbinding.Bind(ctx.Request, v) }
+func (ctx *Context) BindQuery(v any) error { return mapForm(v, ctx.Request.Form) }
 func (ctx *Context) Bind(v any) error {
-	if strings.Contains(ctx.HeaderGet("Content-Type"), "application/json") {
+	if strings.HasPrefix(ctx.HeaderGet("Content-Type"), "application/json") {
 		return ctx.BindJSON(v)
 	}
 	return ctx.BindQuery(v)
@@ -226,11 +211,8 @@ func (ctx *Context) Bind(v any) error {
 
 // ---------- Response ----------
 func (ctx *Context) Write(p []byte) (int, error) { return ctx.Response.Write(p) }
-
-func (ctx *Context) Header() http.Header { return ctx.Response.Header() }
-
-func (ctx *Context) WriteHeader(statusCode int) { ctx.Response.WriteHeader(statusCode) }
-
+func (ctx *Context) Header() http.Header         { return ctx.Response.Header() }
+func (ctx *Context) WriteHeader(statusCode int)  { ctx.Response.WriteHeader(statusCode) }
 func (ctx *Context) Set(key string, val any) {
 	ctx.values = append(ctx.values, Pair[string, any]{key, val})
 }
@@ -245,49 +227,41 @@ func (ctx *Context) Get(key string) any {
 }
 
 func (ctx *Context) GetBool(key string) bool {
-	for _, v := range ctx.values {
-		if v.Key == key {
-			val, ok := v.Val.(bool)
-			if ok {
-				return val
-			}
-		}
-	}
-	return false
+	val, _ := ctx.Get(key).(bool)
+	return val
 }
 
 func (ctx *Context) GetString(key string) string {
-	for _, v := range ctx.values {
-		if v.Key == key {
-			val, ok := v.Val.(string)
-			if ok {
-				return val
-			}
-		}
-	}
-	return ""
+	val, _ := ctx.Get(key).(string)
+	return val
 }
 
 func (ctx *Context) GetInt(key string) int {
-	for _, v := range ctx.values {
-		if v.Key == key {
-			val, ok := v.Val.(int)
-			if ok {
-				return val
-			}
-		}
-	}
-	return 0
+	val, _ := ctx.Get(key).(int)
+	return val
 }
 
 func (ctx *Context) GetUint(key string) uint {
-	for _, v := range ctx.values {
-		if v.Key == key {
-			val, ok := v.Val.(uint)
-			if ok {
-				return val
-			}
-		}
-	}
-	return 0
+	val, _ := ctx.Get(key).(uint)
+	return val
+}
+
+func (ctx *Context) GetInt64(key string) int64 {
+	val, _ := ctx.Get(key).(int64)
+	return val
+}
+
+func (ctx *Context) GetUint64(key string) uint64 {
+	val, _ := ctx.Get(key).(uint64)
+	return val
+}
+
+func (ctx *Context) GetFloat64(key string) float64 {
+	val, _ := ctx.Get(key).(float64)
+	return val
+}
+
+func (ctx *Context) GetFloat32(key string) float32 {
+	val, _ := ctx.Get(key).(float32)
+	return val
 }
